@@ -1,21 +1,25 @@
 import { google } from "googleapis";
 import { GoogleAuth } from "google-auth-library";
-import keys from "../keys.json" with { type: "json" };
 import appConfig from "../config/appConfig.js";
 
-const { GOOGLE_SHEET_ID } = appConfig;
+const { GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_BASE64 } = appConfig;
+
+const jsonString = Buffer.from(
+  GOOGLE_SERVICE_ACCOUNT_BASE64,
+  "base64"
+).toString("utf8");
+
+const credentials = JSON.parse(jsonString);
 
 // Validate that keys are loaded
-if (!keys || !keys.client_email || !keys.private_key) {
-  console.error("Error: keys.json is missing required fields (client_email, private_key)");
-  throw new Error("Google Sheets credentials are missing");
+if (!credentials.client_email || !credentials.private_key) {
+  throw new Error("Invalid decoded credentials");
 }
-
 // Use GoogleAuth with credentials - this is the recommended approach
 // It automatically handles JWT token generation and refresh
 // Pass the entire keys object as it contains all necessary service account fields
 const auth = new GoogleAuth({
-  credentials: keys,
+  credentials,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
@@ -37,6 +41,8 @@ export async function fetchRows(range, filter = null) {
     return rows;
   } catch (error) {
     console.error(`Error fetching rows from range "${range}":`, error);
-    throw new Error(`Failed to fetch rows from Google Sheets: ${error.message}`);
+    throw new Error(
+      `Failed to fetch rows from Google Sheets: ${error.message}`
+    );
   }
 }
