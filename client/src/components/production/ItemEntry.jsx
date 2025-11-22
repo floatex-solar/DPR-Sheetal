@@ -1,5 +1,5 @@
 // components/production/ItemEntry.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Select,
@@ -27,72 +27,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import api from "../../assets/axios";
 
 const ItemEntry = ({
   index,
-  typeName,
-  initialData,
+  entry,
   onChange,
   onDelete,
-  mobile = false, // MachineSection passes this flag
-  availableItems = [], // passed from MachineSection
+  mobile = false,
+  availableItems = [],
 }) => {
-  /** Local state */
-  const [category, setCategory] = useState(initialData.category || "");
-  const [subCategory, setSubCategory] = useState(initialData.subCategory || "");
-  const [size, setSize] = useState(initialData.size || "");
-  const [uom, setUom] = useState(initialData.uom || "");
-  const [okQty, setOkQty] = useState(initialData.okQty || "");
-  const [okWeight, setOkWeight] = useState(initialData.okWeight || "");
-  const [rejectedQty, setRejectedQty] = useState(initialData.rejectedQty || "");
-  const [rejectedWeight, setRejectedWeight] = useState(
-    initialData.rejectedWeight || ""
-  );
-
   const [open, setOpen] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  /** Derived lists */
-  const categories = [...new Set(availableItems.map((i) => i.category))].sort();
-
-  const subCategories =
-    category.length > 0
-      ? [
-          ...new Set(
-            availableItems
-              .filter((i) => i.category === category)
-              .map((i) => i.subCategory)
-          ),
-        ].sort()
-      : [];
-
-  const sizes =
-    subCategory.length > 0
-      ? [
-          ...new Set(
-            availableItems
-              .filter(
-                (i) => i.category === category && i.subCategory === subCategory
-              )
-              .map((i) => i.size)
-          ),
-        ].sort()
-      : [];
-
-  /** Emit updated entry data */
-  useEffect(() => {
-    onChange({
-      category,
-      subCategory,
-      size,
-      uom,
-      okQty,
-      okWeight,
-      rejectedQty,
-      rejectedWeight,
-    });
-  }, [
+  const {
     category,
     subCategory,
     size,
@@ -101,7 +48,76 @@ const ItemEntry = ({
     okWeight,
     rejectedQty,
     rejectedWeight,
-  ]);
+  } = entry;
+
+  /** Derived lists */
+  const categories = useMemo(
+    () => [...new Set(availableItems.map((i) => i.category))].sort(),
+    [availableItems]
+  );
+
+  const subCategories = useMemo(() => {
+    if (!category) return [];
+    return [
+      ...new Set(
+        availableItems
+          .filter((i) => i.category === category)
+          .map((i) => i.subCategory)
+      ),
+    ].sort();
+  }, [availableItems, category]);
+
+  const sizes = useMemo(() => {
+    if (!category || !subCategory) return [];
+    return [
+      ...new Set(
+        availableItems
+          .filter(
+            (i) => i.category === category && i.subCategory === subCategory
+          )
+          .map((i) => i.size)
+      ),
+    ].sort();
+  }, [availableItems, category, subCategory]);
+
+  /** Handlers */
+  const handleCategoryChange = (v) => {
+    onChange({
+      ...entry,
+      category: v,
+      subCategory: "",
+      size: "",
+    });
+  };
+
+  const handleSubCategoryChange = (v) => {
+    onChange({
+      ...entry,
+      subCategory: v,
+      size: "",
+    });
+  };
+
+  const handleSizeChange = (v) => {
+    onChange({
+      ...entry,
+      size: v,
+    });
+  };
+
+  const handleUomChange = (v) => {
+    onChange({
+      ...entry,
+      uom: v,
+    });
+  };
+
+  const handleNumberChange = (field) => (e) => {
+    onChange({
+      ...entry,
+      [field]: e.target.value,
+    });
+  };
 
   /** ---------- DESKTOP LAYOUT ---------- */
   if (!mobile) {
@@ -110,14 +126,7 @@ const ItemEntry = ({
         {/* Desktop row */}
         <div className="hidden sm:grid grid-cols-[2fr_2fr_2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-2 items-center mb-2">
           {/* Category */}
-          <Select
-            value={category}
-            onValueChange={(v) => {
-              setCategory(v);
-              setSubCategory("");
-              setSize("");
-            }}
-          >
+          <Select value={category} onValueChange={handleCategoryChange}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
@@ -133,10 +142,7 @@ const ItemEntry = ({
           {/* SubCategory */}
           <Select
             value={subCategory}
-            onValueChange={(v) => {
-              setSubCategory(v);
-              setSize("");
-            }}
+            onValueChange={handleSubCategoryChange}
             disabled={!category}
           >
             <SelectTrigger className="w-full">
@@ -152,7 +158,11 @@ const ItemEntry = ({
           </Select>
 
           {/* Size */}
-          <Select value={size} onValueChange={setSize} disabled={!subCategory}>
+          <Select
+            value={size}
+            onValueChange={handleSizeChange}
+            disabled={!subCategory}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Size" />
             </SelectTrigger>
@@ -166,7 +176,7 @@ const ItemEntry = ({
           </Select>
 
           {/* UOM */}
-          <Select value={uom} onValueChange={setUom}>
+          <Select value={uom} onValueChange={handleUomChange}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="UOM" />
             </SelectTrigger>
@@ -180,7 +190,7 @@ const ItemEntry = ({
           <Input
             type="number"
             value={okQty}
-            onChange={(e) => setOkQty(e.target.value)}
+            onChange={handleNumberChange("okQty")}
             placeholder="0"
           />
 
@@ -188,7 +198,7 @@ const ItemEntry = ({
           <Input
             type="number"
             value={okWeight}
-            onChange={(e) => setOkWeight(e.target.value)}
+            onChange={handleNumberChange("okWeight")}
             placeholder="0"
           />
 
@@ -196,7 +206,7 @@ const ItemEntry = ({
           <Input
             type="number"
             value={rejectedQty}
-            onChange={(e) => setRejectedQty(e.target.value)}
+            onChange={handleNumberChange("rejectedQty")}
             placeholder="0"
           />
 
@@ -204,7 +214,7 @@ const ItemEntry = ({
           <Input
             type="number"
             value={rejectedWeight}
-            onChange={(e) => setRejectedWeight(e.target.value)}
+            onChange={handleNumberChange("rejectedWeight")}
             placeholder="0"
           />
 
@@ -284,14 +294,7 @@ const ItemEntry = ({
           <CollapsibleContent className="p-3 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               {/* Category */}
-              <Select
-                value={category}
-                onValueChange={(v) => {
-                  setCategory(v);
-                  setSubCategory("");
-                  setSize("");
-                }}
-              >
+              <Select value={category} onValueChange={handleCategoryChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -307,10 +310,7 @@ const ItemEntry = ({
               {/* SubCategory */}
               <Select
                 value={subCategory}
-                onValueChange={(v) => {
-                  setSubCategory(v);
-                  setSize("");
-                }}
+                onValueChange={handleSubCategoryChange}
                 disabled={!category}
               >
                 <SelectTrigger className="w-full">
@@ -328,7 +328,7 @@ const ItemEntry = ({
               {/* Size */}
               <Select
                 value={size}
-                onValueChange={setSize}
+                onValueChange={handleSizeChange}
                 disabled={!subCategory}
               >
                 <SelectTrigger className="w-full">
@@ -344,7 +344,7 @@ const ItemEntry = ({
               </Select>
 
               {/* UOM */}
-              <Select value={uom} onValueChange={setUom}>
+              <Select value={uom} onValueChange={handleUomChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="UOM" />
                 </SelectTrigger>
@@ -358,28 +358,28 @@ const ItemEntry = ({
                 type="number"
                 placeholder="OK Qty"
                 value={okQty}
-                onChange={(e) => setOkQty(e.target.value)}
+                onChange={handleNumberChange("okQty")}
               />
 
               <Input
                 type="number"
                 placeholder="OK Wt"
                 value={okWeight}
-                onChange={(e) => setOkWeight(e.target.value)}
+                onChange={handleNumberChange("okWeight")}
               />
 
               <Input
                 type="number"
                 placeholder="Rej Qty"
                 value={rejectedQty}
-                onChange={(e) => setRejectedQty(e.target.value)}
+                onChange={handleNumberChange("rejectedQty")}
               />
 
               <Input
                 type="number"
                 placeholder="Rej Wt"
                 value={rejectedWeight}
-                onChange={(e) => setRejectedWeight(e.target.value)}
+                onChange={handleNumberChange("rejectedWeight")}
               />
             </div>
           </CollapsibleContent>

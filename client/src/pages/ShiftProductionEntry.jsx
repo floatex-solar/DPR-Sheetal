@@ -1,5 +1,5 @@
 // ShiftProductionEntry.jsx
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,12 +33,10 @@ import {
 
 import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 
 import api from "../assets/axios";
 import TypeSection from "../components/production/TypeSection";
-import { Toaster } from "sonner";
 
 const ShiftProductionEntry = () => {
   /** ========================
@@ -53,10 +51,8 @@ const ShiftProductionEntry = () => {
   const [doer, setDoer] = useState("");
   const [doers, setDoers] = useState([]);
 
-  const [types, setTypes] = useState([]);
+  const [types, setTypes] = useState([]); // ["Roto", "Blow", ...]
   const [typeSections, setTypeSections] = useState([]);
-
-  const typeSectionRefs = useRef([]);
 
   const [loading, setLoading] = useState(false);
 
@@ -80,7 +76,7 @@ const ShiftProductionEntry = () => {
 
         setSupervisors(supRes.data.map((s) => s.name));
         setDoers(doRes.data.map((d) => d.name));
-        setTypes(typeRes.data);
+        setTypes(typeRes.data); // ["Roto", "Blow", "Injection", "GP"]
       } catch (err) {
         toast.error("Failed to load initial data");
       }
@@ -93,7 +89,13 @@ const ShiftProductionEntry = () => {
    * ADD TYPE SECTION
    * ======================== */
   const addTypeSection = () => {
-    setTypeSections((prev) => [...prev, { typeName: "", machines: [] }]);
+    setTypeSections((prev) => [
+      ...prev,
+      {
+        typeName: "",
+        machines: [], // [{ machineId: "", entries: [...] }]
+      },
+    ]);
   };
 
   /** ========================
@@ -106,7 +108,6 @@ const ShiftProductionEntry = () => {
 
   const confirmDeleteTypeSection = () => {
     if (deleteIndex !== null) {
-      typeSectionRefs.current.splice(deleteIndex, 1);
       setTypeSections((prev) => prev.filter((_, i) => i !== deleteIndex));
     }
     setDeleteIndex(null);
@@ -139,7 +140,7 @@ const ShiftProductionEntry = () => {
             mIndex + 1
           }).`;
 
-        if (!m.entries.length)
+        if (!m.entries || !m.entries.length)
           return `Add at least one entry in Machine ${mIndex + 1} of Type ${
             t.typeName
           }.`;
@@ -179,16 +180,13 @@ const ShiftProductionEntry = () => {
   const handleSave = async () => {
     setLoading(true);
 
-    const typeSectionsData = typeSectionRefs.current
-      .filter(Boolean)
-      .map((ref) => ref.getData());
-
+    // typeSections is now the single source of truth
     const payload = {
       productionDate: format(productionDate, "yyyy-MM-dd"),
       shift,
       supervisor,
       doer,
-      types: typeSectionsData,
+      types: typeSections,
     };
 
     const err = validatePayload(payload);
@@ -219,7 +217,6 @@ const ShiftProductionEntry = () => {
     setSupervisor("");
     setDoer("");
     setTypeSections([]);
-    typeSectionRefs.current = [];
   };
 
   /** ========================
@@ -321,11 +318,10 @@ const ShiftProductionEntry = () => {
                 key={tIndex}
                 index={tIndex}
                 types={types}
-                initialData={section}
-                ref={(el) => (typeSectionRefs.current[tIndex] = el)}
-                onChange={(updated) =>
+                section={section}
+                onChange={(updatedSection) =>
                   setTypeSections((prev) =>
-                    prev.map((t, i) => (i === tIndex ? updated : t))
+                    prev.map((t, i) => (i === tIndex ? updatedSection : t))
                   )
                 }
                 onDelete={() => requestDeleteTypeSection(tIndex)}
