@@ -202,7 +202,7 @@ const ShiftProductionEntry = () => {
       await api.post("/entries", payload);
       toast.success("Production saved successfully!");
 
-      handleCancel(); // reset
+      // handleCancel(); // reset
     } catch (err) {
       toast.error("Failed to save!");
     } finally {

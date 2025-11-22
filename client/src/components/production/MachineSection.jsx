@@ -111,6 +111,7 @@ const MachineSection = forwardRef(
     useImperativeHandle(ref, () => ({
       getData: () => ({
         machineId,
+        machine: selectedMachine,
         entries,
       }),
     }));
