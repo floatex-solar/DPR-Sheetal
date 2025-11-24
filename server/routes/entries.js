@@ -68,10 +68,10 @@ router.post("/", async (req, res) => {
             entry.subCategory || "-",
             entry.size || "-",
             entry.uom || "-",
-            entry.okQty || "-",
-            entry.okWeight || "-",
-            entry.rejectedQty || "-",
-            entry.rejectedWeight || "-",
+            Number(entry.okQty) || 0,
+            Number(entry.okWeight) || 0,
+            Number(entry.rejectedQty) || 0,
+            Number(entry.rejectedWeight) || 0,
           ]);
         });
       });
